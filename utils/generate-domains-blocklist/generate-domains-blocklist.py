@@ -13,7 +13,7 @@ try:
     import urllib2 as urllib
 
     URLLIB_NEW = False
-except (ImportError, ModuleNotFoundError):
+except ImportError:
     import urllib.request as urllib
     from urllib.request import Request
 
@@ -49,8 +49,7 @@ def parse_trusted_list(content):
                 continue
             name = matches.group(1)
             names.add(name)
-            time_restriction = matches.group(2)
-            if time_restriction:
+            if time_restriction := matches.group(2):
                 time_restrictions[name] = time_restriction
     return names, time_restrictions, globs
 
@@ -92,35 +91,27 @@ def parse_list(content, trusted=False):
 
 def print_restricted_name(output_fd, name, time_restrictions):
     if name in time_restrictions:
-        print("{}\t{}".format(name, time_restrictions[name]), file=output_fd, end="\n")
+        print(f"{name}\t{time_restrictions[name]}", file=output_fd, end="\n")
     else:
         print(
-            "# ignored: [{}] was in the time-restricted list, "
-            "but without a time restriction label".format(name),
+            f"# ignored: [{name}] was in the time-restricted list, but without a time restriction label",
             file=output_fd,
             end="\n",
         )
 
 
 def load_from_url(url):
-    log_info.write("Loading data from [{}]\n".format(url))
+    log_info.write(f"Loading data from [{url}]\n")
     req = urllib.Request(url=url, headers={"User-Agent": "dnscrypt-proxy"})
-    trusted = False
-
-    if URLLIB_NEW:
-        req_type = req.type
-    else:
-        req_type = req.get_type()
-    if req_type == "file":
-        trusted = True
-
+    req_type = req.type if URLLIB_NEW else req.get_type()
+    trusted = req_type == "file"
     response = None
     try:
         response = urllib.urlopen(req, timeout=int(args.timeout))
     except urllib.URLError as err:
-        raise Exception("[{}] could not be loaded: {}\n".format(url, err))
-    if trusted is False and response.getcode() != 200:
-        raise Exception("[{}] returned HTTP code {}\n".format(url, response.getcode()))
+        raise Exception(f"[{url}] could not be loaded: {err}\n")
+    if not trusted and response.getcode() != 200:
+        raise Exception(f"[{url}] returned HTTP code {response.getcode()}\n")
     content = response.read()
     if URLLIB_NEW:
         content = content.decode("utf-8", errors="replace")
@@ -138,7 +129,7 @@ def is_glob(pattern):
     maybe_glob = False
     for i in range(len(pattern)):
         c = pattern[i]
-        if c == "?" or c == "[":
+        if c in ["?", "["]:
             maybe_glob = True
         elif c == "*" and i != 0:
             if i < len(pattern) - 1 or pattern[i - 1] == ".":
@@ -212,12 +203,9 @@ def blocklists_from_config_file(
 
     # Time-based blocklist
     if time_restricted_url and not re.match(r"^[a-z0-9]+:", time_restricted_url):
-        time_restricted_url = "file:" + time_restricted_url
+        time_restricted_url = f"file:{time_restricted_url}"
 
-    output_fd = sys.stdout
-    if output_file:
-        output_fd = open(output_file, "w")
-
+    output_fd = open(output_file, "w") if output_file else sys.stdout
     if time_restricted_url:
         time_restricted_content, _trusted = load_from_url(time_restricted_url)
         time_restricted_names, time_restrictions, _globs = parse_trusted_list(
@@ -236,19 +224,19 @@ def blocklists_from_config_file(
 
     # Allowed list
     if allowlist and not re.match(r"^[a-z0-9]+:", allowlist):
-        allowlist = "file:" + allowlist
+        allowlist = f"file:{allowlist}"
 
     allowed_names |= allowlist_from_url(allowlist)
 
     # Process blocklists
     for url, names in blocklists.items():
         print(
-            "\n\n########## Blocklist from {} ##########\n".format(url),
+            f"\n\n########## Blocklist from {url} ##########\n",
             file=output_fd,
             end="\n",
         )
         ignored, glob_ignored, allowed = 0, 0, 0
-        list_names = list()
+        list_names = []
         for name in names:
             if covered_by_glob(all_globs, name):
                 glob_ignored = glob_ignored + 1
@@ -262,16 +250,16 @@ def blocklists_from_config_file(
 
         list_names.sort(key=name_cmp)
         if ignored:
-            print("# Ignored duplicates: {}".format(ignored), file=output_fd, end="\n")
+            print(f"# Ignored duplicates: {ignored}", file=output_fd, end="\n")
         if glob_ignored:
             print(
-                "# Ignored due to overlapping local patterns: {}".format(glob_ignored),
+                f"# Ignored due to overlapping local patterns: {glob_ignored}",
                 file=output_fd,
                 end="\n",
             )
         if allowed:
             print(
-                "# Ignored entries due to the allowlist: {}".format(allowed),
+                f"# Ignored entries due to the allowlist: {allowed}",
                 file=output_fd,
                 end="\n",
             )
