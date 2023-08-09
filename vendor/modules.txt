@@ -171,7 +171,7 @@ github.com/hashicorp/go-immutable-radix
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/go-syslog v1.0.0
 github.com/hashicorp/go-syslog
-# github.com/hashicorp/golang-lru v0.5.4
+# github.com/hashicorp/golang-lru v1.0.2
 ## explicit
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
