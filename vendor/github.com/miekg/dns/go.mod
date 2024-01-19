@@ -1,9 +1,12 @@
 module github.com/miekg/dns
 
-go 1.14
+go 1.19
 
 require (
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210303074136-134d130e1a04
+	golang.org/x/net v0.20.0
+	golang.org/x/sync v0.6.0
+	golang.org/x/sys v0.16.0
+	golang.org/x/tools v0.17.0
 )
+
+require golang.org/x/mod v0.14.0 // indirect

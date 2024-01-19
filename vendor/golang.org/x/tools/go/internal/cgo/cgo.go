@@ -57,21 +57,18 @@ import (
 	"go/build"
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	exec "golang.org/x/sys/execabs"
 )
 
 // ProcessFiles invokes the cgo preprocessor on bp.CgoFiles, parses
 // the output and returns the resulting ASTs.
-//
 func ProcessFiles(bp *build.Package, fset *token.FileSet, DisplayPath func(path string) string, mode parser.Mode) ([]*ast.File, error) {
-	tmpdir, err := ioutil.TempDir("", strings.Replace(bp.ImportPath, "/", "_", -1)+"_C")
+	tmpdir, err := os.MkdirTemp("", strings.Replace(bp.ImportPath, "/", "_", -1)+"_C")
 	if err != nil {
 		return nil, err
 	}
@@ -160,13 +157,15 @@ func Run(bp *build.Package, pkgdir, tmpdir string, useabs bool) (files, displayF
 	}
 
 	args := stringList(
-		"go", "tool", "cgo", "-srcdir", pkgdir, "-objdir", tmpdir, cgoflags, "--",
+		"go", "tool", "cgo", "-objdir", tmpdir, cgoflags, "--",
 		cgoCPPFLAGS, cgoexeCFLAGS, cgoFiles,
 	)
 	if false {
-		log.Printf("Running cgo for package %q: %s", bp.ImportPath, args)
+		log.Printf("Running cgo for package %q: %s (dir=%s)", bp.ImportPath, args, pkgdir)
 	}
 	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Dir = pkgdir
+	cmd.Env = append(os.Environ(), "PWD="+pkgdir)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
